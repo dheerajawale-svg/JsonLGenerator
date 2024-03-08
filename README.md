@@ -4,6 +4,7 @@
 
 Converts json to jsonl format that includes below format:
 
+```json
 {
     "messages": [
         {
@@ -18,6 +19,7 @@ Converts json to jsonl format that includes below format:
             "role": "assistant",
             "content": "yes, I have more difficulty TWX"
         },
-        ....etc...
+        #....etc...
     ]
 }
+```
