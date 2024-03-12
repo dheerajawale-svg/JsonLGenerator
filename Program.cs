@@ -6,6 +6,8 @@ namespace JsonLGenerator
 {
     internal class Program
     {
+        static string jsonOutputFileName = "patientQnAdata.jsonl";
+
         static void Main(string[] args)
         {
             Console.WriteLine("JsonL Generator!");
@@ -18,57 +20,53 @@ namespace JsonLGenerator
 
             var data = File.ReadAllText(inputFileName);
 
-            var jsonFileName = "patientQnAdata.jsonl";
-            File.Create(jsonFileName).Close();
+            File.Create(jsonOutputFileName).Close();
 
             roots collection = new roots() { rootdata = new() };
 
             var dictionary = JsonSerializer.Deserialize<Dictionary<string, List<Dictionary<string, string>>>>(data);
             foreach (var items in dictionary["PatientInfo"])
             {
-                foreach (KeyValuePair<string, string> kvp in items)
+                message system = new message
                 {
-                    message system = new message
-                    {
-                        content = "You are a medical assistent who can cleverly ask patients about problem they have",
-                        role = "system"
-                    };
+                    content = "You are a medical assistent who can cleverly ask patients about problem they have",
+                    role = "system"
+                };
 
-                    message user = new message
+                message userFirst = new message
+                {
+                    role = "user",
+                    content = "Hello, I am having difficulty in hearing."
+                };
+
+                root obj = new()
+                {
+                    messages = [system, userFirst]
+                };
+
+                for (int index = 0; index < items.Count; index++)
+                {
+                    var kvp = items.ElementAt(index);
+
+                    message assistent = new()
                     {
-                        role = "user",
+                        role = "assistant",
                         content = kvp.Key
                     };
 
-                    message assistent = new message
+                    message user = new()
                     {
-                        role = "assistant",
+                        role = "user",
                         content = kvp.Value
                     };
 
-                    root obj = new root
-                    {
-                        messages = new List<message> { system, user, assistent }
-                    };
-
-                    var t1 = JsonSerializer.Serialize(obj);
-                    File.AppendAllText(jsonFileName, t1 + Environment.NewLine);
-
-                    collection.rootdata.Add(obj);
+                    obj.messages.Add(assistent);
+                    obj.messages.Add(user);
                 }
+
+                var t1 = JsonSerializer.Serialize(obj);
+                File.AppendAllText(jsonOutputFileName, t1 + Environment.NewLine);
             }
-
-            //var output = JsonSerializer.Serialize(collection.rootdata);
-
-            //File.WriteAllText("output.jsonl", output);
-
-            //var jsonData = (JObject)JsonConvert.DeserializeObject(data);
-            //var patientInfo = jsonData["PatientInfo"].Values();
-
-            //foreach (var item in patientInfo)
-            //{
-            //    Debug.WriteLine(item.ToString());
-            //}
 
             Console.WriteLine("Done!");
 
