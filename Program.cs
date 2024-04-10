@@ -1,98 +1,93 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace JsonLGenerator
 {
     internal class Program
     {
-        static string jsonOutputFileName = "patientQnAdata.jsonl";
+        static string outputFileName = "output_QnA{0}.jsonl";
 
         static void Main(string[] args)
         {
             Console.WriteLine("JsonL Generator!");
 
-            Console.WriteLine("Enter the data file path");
-            var inputFileName = Console.ReadLine();
+            Console.WriteLine("Enter the directory path where files are located");
+            var inputDirName = Console.ReadLine();
 
-            if (string.IsNullOrEmpty(inputFileName))
-                inputFileName = "custom_dataset_2.json";
+            var allFiles = Directory.GetFiles(inputDirName, "*.json");
 
-            var data = File.ReadAllText(inputFileName);
+            var outputFileCounter = 1;
 
-            File.Create(jsonOutputFileName).Close();
+            //Create output file.
+            string jsonlFileName = string.Format(outputFileName, outputFileCounter++);
+            File.Create(jsonlFileName).Close();
 
-            roots collection = new roots() { rootdata = new() };
+            //Read sample file 1st.
+            Helper.ReadInfoOld(File.ReadAllText("custom_dataset_2.json"), jsonlFileName);
 
-            var dictionary = JsonSerializer.Deserialize<Dictionary<string, List<Dictionary<string, string>>>>(data);
-            foreach (var items in dictionary["PatientInfo"])
+            for (int i = 0; i < allFiles.Length; i++)
             {
-                message system = new message
+                if (IsMultipleOfTen(i + 1))
                 {
-                    content = "You are a medical assistent who can cleverly ask patients about problem they have",
-                    role = "system"
-                };
-
-                message userFirst = new message
-                {
-                    role = "user",
-                    content = "Hello, I am having difficulty in hearing."
-                };
-
-                root obj = new()
-                {
-                    messages = [system, userFirst]
-                };
-
-                for (int index = 0; index < items.Count; index++)
-                {
-                    var kvp = items.ElementAt(index);
-
-                    message assistent = new()
-                    {
-                        role = "assistant",
-                        content = kvp.Key
-                    };
-
-                    message user = new()
-                    {
-                        role = "user",
-                        content = kvp.Value
-                    };
-
-                    obj.messages.Add(assistent);
-                    obj.messages.Add(user);
+                    jsonlFileName = string.Format(outputFileName, outputFileCounter++);
+                    File.Create(jsonlFileName).Close();
                 }
 
-                var t1 = JsonSerializer.Serialize(obj);
-                File.AppendAllText(jsonOutputFileName, t1 + Environment.NewLine);
+                string inputFileName = allFiles[i];
+                var data = File.ReadAllText(inputFileName);
+
+                TranformFileInfo(data, jsonlFileName);
             }
 
             Console.WriteLine("Done!");
 
             Console.ReadLine();
         }
-    }
 
-#pragma warning disable IDE1006
-#pragma warning disable CS8981
-    public class message
-    {
-        [JsonPropertyOrder(1)]
-        public string content { get; set; }
+        private static void TranformFileInfo(string fileData, string outputFile)
+        {
+            message system = new()
+            {
+                content = "You are a medical assistent who can cleverly ask patients about problem they have",
+                role = "system"
+            };
 
-        public string role { get; set; }
-    }
+            message userFirst = new()
+            {
+                role = "user",
+                content = "Hello, I am having difficulty in hearing."
+            };
 
-    public class root
-    {
-        public List<message> messages { get; set; }
-    }
+            root fileEntry = new()
+            {
+                messages = [system, userFirst]
+            };
 
-    public class roots
-    {
-        public List<root> rootdata { get; set; }
+            try
+            {
+                var items = JsonSerializer.Deserialize<Dictionary<string, string>>(fileData);
+                Helper.ReadInfoFormatDictionary(fileEntry, items);
+            }
+            catch (JsonException ex)
+            {
+                Debug.WriteLine(ex);
+                Helper.ReadInfoFormatJArray(fileData, fileEntry);
+            }
+
+            message conclusion = new()
+            {
+                role = "assistant",
+                content = "--conclusion here--"
+            };
+            fileEntry.messages.Add(conclusion);
+
+            var t1 = JsonSerializer.Serialize(fileEntry);
+            File.AppendAllText(outputFile, t1 + Environment.NewLine);
+        }
+
+        public static bool IsMultipleOfTen(int number)
+        {
+            return number % 10 == 0;
+        }
     }
-#pragma warning restore CS8981 // The type name only contains lower-cased ascii characters. Such names may become reserved for the language.
-#pragma warning restore IDE1006 // Naming Styles
 }
